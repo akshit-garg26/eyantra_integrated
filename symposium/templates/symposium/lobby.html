@@ -1,0 +1,785 @@
+{% extends 'base.html' %} {% load static %}
+{% block title %} Lobby - {% endblock %} {% block content%}
+{% include 'navbar.html' %}
+<!-- CDNS for required packages -->
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/GLTFLoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/RGBELoader.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/FirstPersonControls.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/addons/geometries/TextGeometry.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.1/gsap.min.js"
+  integrity="sha512-qF6akR/fsZAB4Co1QDDnUXWnaQseLGXoniuSuSlPQK6+aWhlMZcHzkasCSlnWoe+TJuudlka1/IQ01Dnhgq95g=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/tween.js/20.0.3/tween.umd.js"
+  integrity="sha512-T07MoUSqffM8IKU7WCC5DWiG56NPo4dcTuWbzbV2pJo5cUPfnteoFn2SEPgQgLpNAR7qdNyCONXz6oJG/YXMbA=="
+  crossorigin="anonymous" referrerpolicy="no-referrer"></script>'
+
+<script defer src="{% static 'Capsule.js' %}"></script>
+<script defer src="{% static 'Octree.js' %}"></script>
+
+<script defer src="{% static 'lobby folder/UtilityFunctions.js' %}"></script>
+<style> 
+
+svg path {
+          z-index: -1;
+        }
+      
+        #animatesvg
+         {
+          fill: transparent;
+          stroke-dashoffset: 141;
+          stroke-dasharray: 141;
+          animation: path 1s cubic-bezier(0.47, 0, 0.75, 0.72) forwards;
+          z-index: 1;
+        }
+
+</style>
+
+<div id="progressPage" class = "justify-center items-center h-screen w-screen bg-green-500 absolute top-0 left-0 flex flex-col" style="background-color: black;">
+  <svg
+  width="200"
+  height="200"
+  viewBox="0 0 44 48"
+  fill="none"
+  xmlns="http://www.w3.org/2000/svg"
+>
+  <path
+    d="M44 44H12.3993C9.59954 43.7694 4 42.0166 4 36.8506V11.9431C4 5.46063 6.0654 4.28637 9.64544 4.10187C13.2255 3.91737 21.969 4.025 25.8933 4.10187C27.9816 4.1275 32.296 4.10187 32.296 14.7106L4 28.5231"
+    stroke="white"
+    stroke-width="6"
+  />
+  <path
+    id="animatesvg"
+    d="M44 44H12.3993C9.59954 43.7694 4 42.0166 4 36.8506V11.9431C4 5.46063 6.0654 4.28637 9.64544 4.10187C13.2255 3.91737 21.969 4.025 25.8933 4.10187C27.9816 4.1275 32.296 4.10187 32.296 14.7106L4 28.5231"
+    stroke="#e13236"
+    stroke-width="7"
+  />
+  </svg>
+  <p style="text-align: center; color:white; font-size: 60px; -webkit-user-select: none; -ms-user-select: none; user-select: none;"> 
+    Loading...
+  </p>
+
+</div>
+
+<!-- <div class="fixed left-0 top-0 -z-10" id="lobby"></div> -->
+
+<!-- Scrolling animation -->
+<script defer type="module">
+  //Append all Exhibit_Entries into data2 for further use
+  let data2 = [];
+  "{% for Exhibit in Exhibition_Entries %}"
+  // console.log("{{Exhibit.is_Verified}}");
+  if ("{{Exhibit.is_Verified}}" == "True")
+    data2.push({
+      title: "{{Exhibit.title}}",
+      username: "{{Exhibit.username}}",
+      exhibition_wall_model: "{{Exhibit.exhibition_wall}}",
+      model_link: "{{Exhibit.model_link}}",
+      poster: "{{Exhibit.poster}}",
+      exhibition_front_view: "{{Exhibit.exhibition_front_view}}",
+      category: "{{Exhibit.category}}",
+      is_Verified: "{{Exhibit.is_Verified}}",
+      team_members: "{{Exhibit.team_members}}",
+      school_name: "{{Exhibit.school_name}}"
+    })
+  "{% endfor %}"
+
+  // console.log(data2);
+
+  //Declaring a THREE clock for animations based on scrolling
+  const clock = new THREE.Clock();
+
+  //Loading a new Scene with background
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x88ccee);
+
+  //Initializing a list of camera positions and rotations to animate to
+  //The first position was found using trial and error to point towards rest of the exhibits
+  //The other positions and rotations will be added as the frames are placed
+  var camera_position_list = [[-3, 1.5, 0]];
+  var camera_rotation_list = [[0, -Math.PI / 2, 0]];
+
+  //an index to point to which position the camera is currently at
+  var camera_curr_position_index = 0;
+
+  //initialising the camera
+  const camera = new THREE.PerspectiveCamera(
+    70,
+    window.innerWidth / window.innerHeight,
+    0.1,
+    1000
+  );
+
+  //setting camera position and rotation to first position and rotation
+  camera.rotation.order = 'YXZ';
+  camera.position.set(...camera_position_list[0]);
+  camera.rotation.set(...camera_rotation_list[0]);
+
+  //Initialising a raycaster and pointer so that we can click on placed images
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+
+  let mouseTime = 0;
+  const keyStates = {};
+
+  let mousedown = false;
+
+  //Add eventListeners to look around while holding down the mouse click button and moving mouse around
+  document.addEventListener('mousedown', () => {
+    mousedown = true;
+  });
+
+  document.addEventListener('mouseup', () => {
+    mousedown = false;
+  });
+
+  document.body.addEventListener('mousemove', (event) => {
+    if (mousedown) {
+      camera.rotation.y -= event.movementX / 200;
+      camera.rotation.x -= event.movementY / 500;
+    }
+  });
+
+  //Update camera's size and width when resized to fit 3D view and make website responsive
+  window.addEventListener('resize', onWindowResize);
+
+  function onWindowResize() {
+    camera.aspect = window.innerWidth / window.innerHeight;
+    camera.updateProjectionMatrix();
+
+    renderer.setSize(window.innerWidth, window.innerHeight);
+  }
+
+
+  //Add eventlistener for scrollwheel to animate forward or backward depending on scroll direction
+  window.addEventListener('wheel', (event) => {
+    //Pass direction as +1 or -1 to function to scroll ahead or backward
+    MoveCameraToNextPosition(Math.sign(event.deltaY));
+  });
+
+  //Function that moves the camera to the next or previous position according to input
+  //Input : dir, can be either -1 or 1
+  //-1 to move to the previous position and 1 to move to the next position
+  //does not return anything
+  function MoveCameraToNextPosition(dir) {
+    if (dir == 1) {
+      //Incremement camera_curr_position_index
+      camera_curr_position_index++;
+
+      //If camera_curr_position_index goes above the length of the position list, reset it to 0
+      if (camera_curr_position_index >= camera_position_list.length)
+        camera_curr_position_index = 0;
+    }
+
+    else if (dir == -1) {
+
+      camera_curr_position_index--;
+
+      //If camera_curr_position_index goes below 0,reset it to  the length of the position list - 1
+      if (camera_curr_position_index < 0)
+        camera_curr_position_index = camera_position_list.length - 1;
+
+    }
+
+    //Use gsap to move camera to required position and rotation smoothly
+    gsap.to(camera.position, {
+      x: camera_position_list[camera_curr_position_index][0],
+      y: camera_position_list[camera_curr_position_index][1],
+      z: camera_position_list[camera_curr_position_index][2],
+      duration: 2
+    });
+
+    gsap.to(camera.rotation, {
+      x: camera_rotation_list[camera_curr_position_index][0],
+      y: camera_rotation_list[camera_curr_position_index][1],
+      z: camera_rotation_list[camera_curr_position_index][2],
+      duration: 2.2
+    });
+  }
+
+  //Add eventlistener for keydown to go to next and previous positions using left and right arrow keys
+
+  document.addEventListener('keydown', (event) => {
+    keyStates[event.code] = true;
+
+    switch (event.keyCode) {
+      case 37:
+        //go to previous position using left arrow key
+        MoveCameraToNextPosition(-1);
+        break;
+
+      case 39:
+        //go to next position using right arrow key
+        MoveCameraToNextPosition(1);
+        break;
+    }
+  });
+
+  document.addEventListener('keyup', (event) => {
+    keyStates[event.code] = false;
+  });
+
+  // Event listener to track pointer movement
+  window.addEventListener('pointermove', (event) => {
+    // Calculate pointer position in normalized device coordinates
+    // (-1 to +1) for both components
+    pointer.x = (event.clientX / window.innerWidth) * 2 - 1;
+    pointer.y = -(event.clientY / window.innerHeight) * 2 + 1;
+  });
+
+  // Function to add to Event listener for click event
+  function ClickToOpenPage(){
+    mouseTime = performance.now();
+
+    // Event listener for mouseup event
+    document.addEventListener('mouseup', () => {
+      // Check if the time between click and mouseup is less than -800 milliseconds
+      if (mouseTime - performance.now() >= -800) {
+        // Raycast to check for intersections between the pointer and objects
+        const intersects = raycaster.intersectObjects(objects);
+
+        // Iterate through the intersected objects
+        for (let intersect of intersects) {
+          // Iterate through the data array
+          for (let index in data2) {
+            // Check if the object name matches the title in the data array
+            if (data2[index].title == intersect.object.name) {
+              // Open the model link in a new browser tab
+              window.open(data2[index].model_link, '_blank');
+            }
+          }
+        }
+      }
+    });
+  }
+
+
+
+
+  var svgIcon = document.getElementById("animatesvg")
+  svgIcon.style.strokeDashoffset = 141;
+
+  var progressPage = document.getElementById("progressPage");
+  // progressPage.style.display = "flex";
+
+
+  var manager = new THREE.LoadingManager();
+  manager.onProgress = function ( item, loaded, total ) {
+    let loadPercentage = (loaded / total * 100);
+    let clampedValue = Math.min(Math.max(loadPercentage, 0), 100) * (141 / 100);
+    svgIcon.style.strokeDashoffset = 141 - clampedValue;
+  };
+  manager.onLoad = () =>{
+    // console.log("EVERYTHING LOADED");
+    progressPage.classList.remove("flex");
+    progressPage.classList.add("hidden");
+    // Event listener for click event
+    window.addEventListener('click', ClickToOpenPage);
+  }
+
+  // Load the HDRI background
+  var hdriLoader = new THREE.RGBELoader(manager);
+  hdriLoader.setDataType(THREE.UnsignedByteType);
+  hdriLoader.load('/../../static/symposium/hdri/museum_of_ethnography_4k.hdr', function (texture) {
+    var pmremGenerator = new THREE.PMREMGenerator(renderer);
+    var envMap = pmremGenerator.fromEquirectangular(texture).texture;
+
+    // Configure scene background
+    scene.background = envMap;
+
+    // Configure scene lighting
+    var ambientLight = new THREE.AmbientLight(0xffffff, 1);
+    scene.add(ambientLight);
+
+    // Clean up texture and generator
+    texture.dispose();
+    pmremGenerator.dispose();
+  });
+
+  //Add a central directional light for entire scene
+  const directionalLight = new THREE.DirectionalLight(0xffffff, 2);
+  directionalLight.position.set(0, 20, 0);
+  directionalLight.castShadow = true;
+  directionalLight.shadow.camera.near = 0.01;
+  directionalLight.shadow.camera.far = 500;
+  directionalLight.shadow.camera.right = 30;
+  directionalLight.shadow.camera.left = -30;
+  directionalLight.shadow.camera.top = 30;
+  directionalLight.shadow.camera.bottom = -30;
+  directionalLight.shadow.mapSize.width = 1024;
+  directionalLight.shadow.mapSize.height = 1024;
+  directionalLight.shadow.radius = 4;
+  directionalLight.shadow.bias = -0.00006;
+  scene.add(directionalLight);
+
+
+  //const container = document.getElementById('lobby');
+
+  //Initialize a renderer
+  const renderer = new THREE.WebGLRenderer({ antialias: false });
+  renderer.setPixelRatio(window.devicePixelRatio * 1 );
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  // renderer.shadowMap.enabled = true;
+  // renderer.shadowMap.type = THREE.VSMShadowMap;
+  renderer.outputEncoding = THREE.sRGBEncoding;
+  renderer.toneMapping = THREE.ACESFilmicToneMapping;
+  renderer.physicallyCorrectLights = true;
+
+  document.body.appendChild(renderer.domElement);
+
+  //offset to place exhibit_rooms in, it is currently 10 as the scale of the room in that axis is 10
+  let offset = 10;
+
+  // const controls = new THREE.OrbitControls(camera, renderer.domElement);
+
+  // const controls = new THREE.FirstPersonControls(camera, renderer.domElement);
+  // controls.movementSpeed = 1;
+  // controls.lookSpeed = 0.4;
+
+  //Declaring variable for number of exhibit_walls that need to be placed, depending on the number of exhibits
+  const count_exhibit_walls = data2.length;
+  // console.log(data2.length);
+
+  //array that adds the type of room as it spawns
+  let room_list = [];
+
+  //number to load all rooms one by one, so it can go from 1 to 3 then back to 1
+  let room_loading_count = 0;
+
+  function LoadOneMuseumRoom(current_count) {
+    //Declare a new GLTF Loader
+    const loader = new THREE.GLTFLoader(manager);
+
+    // Define the base path for exhibit models
+    var exhibit_path = "/../../static/symposium/lobby_images&model/exhibit_templates/exhibit_template_lowpoly_";
+
+    // Increment room_loading_count or reset to 1 if it reaches 3
+    room_loading_count = room_loading_count == 3 ? 1 : room_loading_count + 1;
+
+    // Assign the current value of room_loading_count to room_num
+    let room_num = room_loading_count;
+
+    // Append the room number to the exhibit path to form the complete path for the current room
+    exhibit_path += room_num + ".glb";;
+
+    // Add the room number to the room_list array
+    room_list.push(room_num - 1);
+
+    // Load the exhibit model
+    loader.load(exhibit_path, (gltf) => {
+      gltf.scene.scale.set(1, 1, 1);
+
+      // Set the position of the loaded model based on the offset and current_count
+      gltf.scene.position.set(offset * (current_count - 1), 0, 0);
+
+      // Add the loaded model to the scene
+      scene.add(gltf.scene);
+
+      gltf.scene.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = false;
+
+          // if (child.material.map) {
+          //   child.material.map.anisotropy = 4;
+          // }
+        }
+      });
+
+      // Start the animation
+      animate();
+    });
+  }
+
+
+  function LoadAllMuseumRooms() {
+    //Add rooms depending on count of exhibit walls or frames
+    //Each room can showcase 4 exhibits, hence total/4
+    let num_of_rooms =
+      count_exhibit_walls % 4 == 0 ? count_exhibit_walls / 4 : parseInt(count_exhibit_walls / 4) + 1;
+
+    // console.log(`Placing ${num_of_rooms} rooms `);
+    for (let i = 1; i <= num_of_rooms; i++) {
+      //Load each museum room one by one
+      LoadOneMuseumRoom(i);
+      // console.log(`Placed room no. ${i} `);
+    }
+  }
+
+  //Call function to Load all exhibit rooms
+  LoadAllMuseumRooms(count_exhibit_walls, room_list, scene);
+
+  //Function that places walls at the start and end of the lobby corridor of exhibition
+  function AddEndingWalls() {
+    //path to load the wall model from
+    let wall_path = "/../../static/symposium/lobby_images&model/exhibit_templates/Lobby Wall.glb";
+
+    //offset to place the wall from the center, it is 5 as the total length of the room is 10
+    let offset_wall = 5;
+
+    //declare a new loader
+    const loader = new THREE.GLTFLoader(manager);
+
+    //Load first wall
+    loader.load(wall_path, (gltf) => {
+      gltf.scene.scale.set(1, 1, 1);
+
+      //subtract omly the offset to place the starting wall
+      gltf.scene.position.set(0 - offset_wall, 0, 0);
+
+      scene.add(gltf.scene);
+
+
+      gltf.scene.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = false;
+
+          // if (child.material.map) {
+          //   child.material.map.anisotropy = 4;
+          // }
+        }
+      });
+    })
+
+    //Load second wall
+    loader.load(wall_path, (gltf) => {
+      gltf.scene.scale.set(1, 1, 1);
+
+      //Add the offset times number of rooms to place wall at the end
+      gltf.scene.position.set(0 + offset_wall * (room_list.length+3), 0, 0);
+
+      scene.add(gltf.scene);
+
+      gltf.scene.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = false;
+
+          // if (child.material.map) {
+          //   child.material.map.anisotropy = 4;
+          // }
+        }
+      });
+    })
+
+  }
+
+  //Call function to add the start and ending walls
+  AddEndingWalls();
+
+  /*
+     The base_position and base_rotation arrays are used as the starting positions and rotations for placing exhibition frames
+     The base_position array is a 3x4 array containing the positions for each room for each frame position
+     3 as there are 3 type of basic rooms and 4 frames per each room
+     Each base_position was found by using First_person controls and logging camera positions, 
+     then moving it to the required wall positions
+     Only the base_positions for each room are needed, the functions ahead handle the rest of the placement using offsets
+  */
+  let base_positions = [
+    //Exhibit positions in Room type 1
+    [
+      [-0.12, 1.05, -1.2], //Centrewall_L_F
+      [-0.12, 1.05, 1.2], //Centrewall_R_F
+      [0.12, 1.05, -1.2], //Centrewall_L_B
+      [0.12, 1.05, 1.2], //Centrewall_R_B,
+    ],
+
+    //Exhibit positions in Room type 2
+    [
+      [-2.12, 1.05, -2.4], //SideWall_L_1
+      [-2.12, 1.05, 2.4], //SideWall_R_1
+      [2.12, 1.05, -2.4], //SideWall_L_2
+      [2.12, 1.05, 2.4] //SideWall_R_2,
+    ],
+
+    //Exhibit positions in Room type 3
+    [
+      [-2.11, 1.05, 0.015], //Centrewall_1_F
+      [-1.89, 1.05, 0.015], //Centrewall_1_B
+      [1.89, 1.05, 0.015], //Centrewall_2_F
+      [2.11, 1.05, 0.015] //Centrewall_2_B
+    ],
+
+  ]
+
+  //The base_rotations is a 3x4 array containing the rotations for each room for each frame position
+  //This array is similar to the base_positions array and stores euler rotations
+  //This array was created using Math.PI to rotate by 180 and Math.PI/2 to rotate by 90
+
+  let base_rotations = [
+    //Exhibit rotations in Room type 1
+    [
+      [0, -Math.PI / 2, 0], //Centrewall_L_F
+      [0, -Math.PI / 2, 0], //Centrewall_R_F
+      [0, Math.PI / 2, 0], //Centrewall_L_B
+      [0, Math.PI / 2, 0], //Centrewall_R_B,
+    ],
+
+    //Exhibit rotations in Room type 2
+    [
+      [0, 0, 0], //SideWall_L_1
+      [0, Math.PI, 0], //SideWall_R_1
+      [0, 0, 0], //SideWall_L_2
+      [0, Math.PI, 0] //SideWall_R_2,
+    ],
+
+    //Exhibit rotations in Room type 3
+    [
+      [0, -Math.PI / 2, 0],     // Centrewall_1_F
+      [0, Math.PI / 2, 0],     // CentreWall_1_B
+      [0, -Math.PI / 2, 0],    // Centrewall_2_F
+      [0, Math.PI / 2, 0],   // CentreWall_2_B
+    ]
+  ];
+
+
+  // //This function calculates the offsetted position based on the base_positions of current_room and using an offset times room index
+  // function GenerateCalculatedPositions(room_index, current_room) {
+  //   // Initialize arrays for storing calculated positions
+  //   let calculated_positions = []; // Stores the calculated positions for each room
+  //   let current_position = []; // Stores the current position being calculated
+  //   let base_position_of_current_room = base_positions[current_room]; // Get the base position of the current room from the base_positions array
+
+  //   // Loop to calculate positions for each room
+  //   for (let i = 0; i < 4; i++) {
+  //     current_position = []; // Reset the current position array for each iteration
+
+  //     // Loop to calculate the X, Y, and Z coordinates of the current position
+  //     for (let j = 0; j < 3; j++) {
+  //       current_position.push(
+  //         j === 0
+  //           ? base_position_of_current_room[i][j] + (offset * Math.floor(room_index / 5)) // Calculate the X coordinate with an additional offset based on the room index
+  //           : base_position_of_current_room[i][j] // Use the base position for the Y and Z coordinates
+  //       );
+  //     }
+
+  //     calculated_positions.push(current_position); // Add the calculated position to the array of calculated positions
+  //   }
+
+    //console.log(calculated_positions, calculated_light_positions);
+  //   return [calculated_positions];
+  // }
+
+  function PlaceExhibitionWalls() {
+    let room_wall = 1;
+    // Loop through the exhibit walls
+    for (let i = 1; i <= count_exhibit_walls; i++) {
+      // Calculate the room number in which the current exhibit wall is being placed
+      let room_placing_in = Math.floor((i - 1) / 4);
+
+      // Generate calculated positions for the current exhibit wall
+      let positions = GenerateCalculatedPositions(parseInt((i-1)/4), room_list[room_placing_in], base_positions);
+      let calculated_positions = positions[0];
+
+      // console.log(room_placing_in);
+
+      // Place the image at the calculated position with the corresponding rotation
+      PlaceImageAtPosition(
+        calculated_positions[room_wall - 1],
+        base_rotations[room_list[room_placing_in]][room_wall - 1],
+        i - 1
+      );
+
+      // Increment room_wall and reset to 1 if it reaches 4
+      room_wall = room_wall % 4 == 0 ? 1 : room_wall + 1;
+    }
+
+  }
+
+  let objects = [];
+  let object_lights = [];
+
+  function PlaceImageAtPosition(image_position, image_rotation, index) {
+    // Loader
+    PlaceImageFrame(image_position, image_rotation);
+
+    // Log the index and title of the image
+    // console.log(index + " " + data2[index].title);
+    // console.log(image_position);
+
+    const textureLoader = new THREE.TextureLoader(manager);
+
+    // Load the texture for the image
+    const eyrcImageTexture = textureLoader.load(data2[index].exhibition_front_view);
+
+    // Create a plane mesh for the image
+    const eyrcImagePlane = new THREE.Mesh(
+      new THREE.PlaneBufferGeometry(16 * 0.08, 9 * 0.08),
+      new THREE.MeshStandardMaterial({
+        map: eyrcImageTexture,
+        side: THREE.DoubleSide,
+      })
+    );
+
+    let new_cam_position;
+
+    // Calculate the new camera position based on image rotation
+    //if sin of rotation in y axis is not 0, then we it is facing towards X axis,
+    //so we give it offset in the X axis depending on if it is facing towards the forward X axis or away from the forward X axis
+    //else we give it offset in the Z axis similarly
+    //The offsets are required so that the camera can be slightly offsetted away from the actual frame so it can look towards t
+    if (Math.sin(image_rotation[1]) != 0 && Math.abs(image_rotation[1]) < Math.PI) {
+      new_cam_position = [
+        image_position[0] - (image_rotation[1] < 0 ? 1 : -1),
+        image_position[1],
+        image_position[2],
+      ];
+    } else {
+      new_cam_position = [
+        image_position[0],
+        image_position[1],
+        image_position[2] - (image_rotation[1] == 0 ? -1 : 1),
+      ];
+    }
+
+    // Add the camera position and rotation to respective lists
+    camera_position_list.push([new_cam_position[0], new_cam_position[1], new_cam_position[2]]);
+    camera_rotation_list.push([image_rotation[0], image_rotation[1], image_rotation[2]]);
+
+    // Set the name, position, and rotation of the image plane
+    eyrcImagePlane.name = data2[index].title;
+    eyrcImagePlane.position.set(
+      image_position[0],
+      image_position[1],
+      image_position[2]
+    );
+    eyrcImagePlane.rotation.set(
+      image_rotation[0],
+      image_rotation[1],
+      image_rotation[2]
+    );
+
+    // Add the image plane to the scene
+    scene.add(eyrcImagePlane);
+
+    // Call a function to place the title and details for the image
+    PlaceTitleAndDetails(
+      data2[index].title,
+      image_position,
+      image_rotation
+    );
+
+    // Add the image plane to the objects array
+    objects.push(eyrcImagePlane);
+  }
+
+
+  function PlaceImageFrame(image_position, image_rotation) {
+    const loader = new THREE.GLTFLoader(manager);
+
+    // console.log("placed frame1");
+
+    // Path to the frame GLTF model
+    let frame_path = "/../../static/symposium/lobby_images&model/exhibit_templates/painting_frame.glb";
+
+    // Load the frame GLTF model
+    loader.load(frame_path, (gltf) => {
+      gltf.scene.scale.set(1, 1, 1);
+
+      // Set the position and rotation of the frame
+      gltf.scene.position.set(
+        image_position[0],
+        image_position[1],
+        image_position[2]
+      );
+      gltf.scene.rotation.set(
+        image_rotation[0],
+        image_rotation[1],
+        image_rotation[2]
+      );
+
+      scene.add(gltf.scene);
+      // console.log("placed frame");
+
+      gltf.scene.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = false;
+          child.receiveShadow = false;
+
+          // if (child.material.map) {
+          //   child.material.map.anisotropy = 4;
+          // }
+        }
+      });
+    });
+  }
+
+  function PlaceTitleAndDetails(title, image_position, image_rotation) {
+    // Define the file paths for different font types
+    let boldTextFontPath = '/../../static/symposium/lobby_images&model/fonts/LT Museum Inline_Bold.json';
+    let lightTextFontPath = '/../../static/symposium/lobby_images&model/fonts/LT Museum_Light.json';
+    let mediumTextFontPath = '/../../static/symposium/lobby_images&model/fonts/LT Museum_Medium.json';
+
+    let text_pos = image_position.slice();
+    let text_rot = [];
+
+    // Place the title
+    let title_offset_y = 0.4;
+
+    // Adjust the y position for the title text
+    text_pos[1] += title_offset_y;
+
+    // Call a function to place the text on the given position with specific font, text, position, rotation, and size
+    PlaceTextOnPosition(
+      boldTextFontPath,
+      title,
+      [...text_pos],
+      image_rotation,
+      0.02
+    );
+  }
+
+  function PlaceTextOnPosition(fontPath, text, position, rotation, size) {
+    // console.log("placing " + text + " at " + position);
+
+    // Create a font loader
+    const fontLoader = new THREE.FontLoader(manager);
+
+    // Load the desired font
+    fontLoader.load(fontPath, function (font) {
+      // Create a material for the text
+      const material = new THREE.MeshBasicMaterial({ color: 0x000000 });
+
+      // Set the desired text parameters
+      const textParameters = {
+        font: font,
+        size: size,
+        height: 0.01,
+        curveSegments: 12,
+        bevelEnabled: false
+      };
+
+      // Create a geometry for the text
+      const textGeometry = new THREE.TextGeometry(text, textParameters);
+
+      // Create a mesh using the geometry and material
+      const textMesh = new THREE.Mesh(textGeometry, material);
+
+      // Set the position and rotation of the text mesh
+      textMesh.position.set(...position);
+      textMesh.rotation.set(...rotation);
+
+      // Add the text mesh to the scene
+      scene.add(textMesh);
+    });
+  }
+
+ 
+  //Call function to place the frames on the walls
+  PlaceExhibitionWalls();
+
+  function animate() {
+    // Render the scene with the current camera
+    renderer.render(scene, camera);
+
+    // Set the raycaster's origin and direction based on the pointer's position and the camera
+    raycaster.setFromCamera(pointer, camera);
+
+    // Request the next animation frame
+    requestAnimationFrame(animate);
+  }
+</script>
+{% endblock %}

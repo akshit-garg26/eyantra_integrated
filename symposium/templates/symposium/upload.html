@@ -1,0 +1,89 @@
+{% extends "network/layout2.html" %}
+{% load static %}
+
+{% block title %}
+Sign Up | Network
+{% endblock %}
+
+{% block script %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css"/>
+<script type"text/javascript" src="{% static 'symposium/upload.js' %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
+
+{% block body %}
+
+<div class="p-3 animate__animated animate__fadeIn animate__zoomIn">
+  <center>
+    <img src="{% static 'network/Images/logo_icon.png' %}" height="45em" style="margin-bottom: 2vh;">
+    <h3>UPLOAD YOUR MODEL</h2><br>
+  </center>
+</div>
+<form action="{% url 'upload' %}" class="animate__animated animate__fadeIn animate__zoomIn" method="post" id="signin-form" style="width: 100%;margin-bottom: 5vh;"
+enctype="multipart/form-data"> 
+{% csrf_token %}
+  <div class="form-group d-flex">
+    <div class="custom-file mr-1">
+      <input type="file" name="poster" class="form-control custom-file-input inp "
+        accept="image/jpeg,image/png,image/webp,image/gif" data-focusable="true" id="input-value1"
+        aria-describedby="inputGroupFileAddon01">
+      <label class="custom-file-label" for="poster"><span style="color: #6c757d;" id="span1">Upload the poster<span></label>
+      <span class="star small"></span>
+    </div>
+    <div class="custom-file ml-1 mr-1">
+      <input type="file" name="front_view" class="form-control custom-file-input inp"
+        accept="image/jpeg,image/png,image/webp,image/gif" data-focusable="true" id="input-value2"
+        aria-describedby="inputGroupFileAddon01">
+      <label class="custom-file-label" for="front_view"><span style="color: #6c757d;" id="span2">Upload the front view<span></label>
+      <span class="star small"></span>
+    </div>
+    <div class="custom-file ml-1">
+      <input type="file" name="model" class="form-control custom-file-input inp" 
+      accept=".blend,.obj,.glb" data-focusable="true" id="input-value3"
+        aria-describedby="inputGroupFileAddon01">
+      <label class="custom-file-label" for="model"><span style="color: #6c757d;" id="span3">Upload The Model<span></label>
+      <span class="star small"></span>
+    </div>
+  </div>
+  <div class="form-group d-flex">
+    <div class="form-group mr-1" style="width:100%">
+      <input class="form-control inp title" type="text" name="title" placeholder="Title *"
+          autocomplete="off">
+        <span class="star small"></span>
+    </div>
+    <div class="form-group ml-1" style="width:100%">
+      <select id="inputState" class="form-control inp">
+        <option selected>Category...</option>
+        <option>country1</option>
+        <option>country2</option>
+        <option>country3</option>
+        <option>country4</option>
+        <option>country5</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="input-group">
+    <textarea class="form-control inp" aria-label="With textarea" rows="10" placeholder="Give the description of your model" required name="description" style="resize: none;"></textarea>
+  </div>
+  
+  <center>
+    <input class="btn btn-primary" type="submit" value="Upload" style="margin-top: 10px; width: 95%;" disabled>
+  </center>
+</form>
+<p class="text-danger animate__animated animate__fadeIn animate__zoomIn"><i><b>NOTE :</b> After verification your model may get placed on this website </i>  </p>
+
+{% if messages %}
+{% for message in messages %}
+    {% if message.tags == 'success' %}
+        <script>
+            Swal.fire('{{ message }}','','success').then(function() {
+                    window.location.href = '/';  
+                });
+        </script>
+    {% endif %}
+{% endfor %}
+{% endif %}
+
+
+{% endblock %}

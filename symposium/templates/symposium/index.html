@@ -1,0 +1,121 @@
+{% extends 'base.html' %} {% load static %} {% block content%}
+
+<script
+  defer="defer"
+  src="{% static 'bundle.f224e26b4908278d86b5.js' %}"
+></script>
+
+<style>
+  html,
+  body {
+    overflow: hidden;
+  }
+  .zoom-out-animation {
+    animation: zoomOut 3s forwards ease-in-out;
+  }
+  @keyframes zoomOut {
+    0% {
+      width: 300%;
+    }
+    100% {
+      width: 100%;
+    }
+  }
+</style>
+
+<div
+  class="w-screen overflow-y-scroll h-screen scrollbar-hide"
+  style="scroll-snap-type: y mandatory"
+>
+  <div class="fixed top-0 left-0 w-full">{% include 'navbar.html' %}</div>
+  <div class="snap-start w-full h-screen text-white overflow-hidden">
+    <div
+      class="section w-[300%] h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center"
+      style="background-image: url('../../static/symposium/image-1.png');"
+    >
+    <div class="flex flex-col justify-center  items-center ">
+      <h1 class="text-animation text-white opacity-0 animate__animated text-[4rem] font-extrabold">Welcome to Virtual Museum!</h1> <h2 class="text-animation text-white opacity-0 animate__animated text-[2.8rem] font-bold animate__delay-1s"> Built by Students, For Students</h2>
+      <h1 class="text-animation text-white animate__delay-1s opacity-0 animate__animated text-2xl text-center">Virtual Museum is an e-yantra competition for school students to explore their own history and culture and learn about history in a more innovative and fun way.</h1>
+    </div>
+    </div>
+  </div>
+  <div class="snap-start w-full h-screen overflow-hidden">
+    <div
+      class="section w-[300%] h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center relative"
+      style="background-image: url('../../static/symposium/image-2.png')"
+    >
+    <div class="flex flex-col justify-center  items-center">
+      <h1 class="text-animation text-white opacity-0 animate__delay-1s animate__animated text-[4rem] font-bold">Chaturmukha Linga</h1>
+      <h1 class="text-animation text-white animate__delay-2s opacity-0 animate__animated text-2xl text-center p-2">The Chaturmukha linga is a type of mukhalinga, (mukha meaning face, linga meaning phallus) as it was carved to show Shiva's faces rather than a simplified phallic form. The faces represent the five aspects of Shiva, the Hindu deity associated with linga worship: Vamadeva, Tatpurusha, Aghora, Sadyojata and Isana.</h1>
+    </div>
+  </div>
+  </div>
+  <div class="snap-start w-full h-screen overflow-hidden">
+    <div
+      class="section w-[300%] h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center"
+      style="background-image: url('../../static/symposium/image-3.png')"
+    >   
+    <div class="flex flex-col justify-center  items-center">
+      <h1 class="text-animation text-white animate__delay-1s animate__animated opacity-0 text-[4rem] font-bold">Pillars of Vasantha Mantapa</h1>
+      <h1 class="text-animation text-white animate__delay-2s opacity-0 animate__animated text-2xl text-center p-2">Bhoga Nandeeshwara Temple Complex is a Hindu temple situated in Nandi village, Karnataka, and is devoted to the Lord Shiva. The Vasantha Mandapa of the Uma Maheshwari temple, present in the temple complex, is bounded by four stone curved pillars each of which have a divine couple curved on them Shiva and Parvati, Brahma and Saraswathi, Vishnu and Lakshmi and Agni Deva and Swaha Devi. The pillars and walls are covered with complex carvings of Hoysala style.</h1>
+    </div>
+  </div>
+  </div>
+  <div class="snap-start w-full h-screen overflow-hidden">
+    <div
+      class="section w-[300%] h-screen bg-cover bg-center bg-no-repeat flex items-center justify-center"
+      style="background-image: url('../../static/symposium/image-4.png')"
+    >
+    <div class="flex flex-col justify-center  items-center">
+      <h1 class="text-animation text-white animate__animated animate__delay-2s opacity-0 text-[4rem] font-bold">IXth Ashokan Edict</h1>
+      <h1 class="text-animation text-white animate__delay-2s opacity-0 animate__animated text-2xl text-center p-2">This important piece of history originates from Sopara (Ancient Shurparaka) which was an important port city in Maharashtra. Sopara (Now Nalasopara) is about 47km north of Mumbai. This particular edict is a testimony to a mission assigned to Dhammarakshita (missionary) to spread Buddhism and peace in the western part of his kingdom. The language used in this edict is Mauryan Brahmi.</h1>
+    </div>
+  </div>
+  </div>
+</div>
+
+<script>
+  // Function to handle intersection observer events
+  function handleIntersection(entries) {
+    entries.forEach((entry) => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add("zoom-out-animation");
+      }
+    });
+  }
+
+  // Create a new intersection observer
+  const bgObserver = new IntersectionObserver(handleIntersection, {
+    rootMargin: "0px",
+    threshold: 0.2, // Adjust this threshold value as needed
+  });
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          entry.target.classList.add("animate__backInLeft");
+          entry.target.classList.remove("opacity-0");
+        }
+      });
+    },
+    { rootMargin: "0px", threshold: 0.5 }
+  );
+
+  // Get all the fade-in elements and observe them
+  const fadeElements = document.querySelectorAll(".section");
+  fadeElements.forEach((element) => {
+    bgObserver.observe(element);
+  });
+  const textAnimations = document.querySelectorAll(".text-animation");
+  textAnimations.forEach((element) => {
+    observer.observe(element);
+  });
+</script>
+
+<script>
+  (TEXT = "{{ event.name }}"), (TEXTURE = "{{ event.hero_image }}");
+</script>
+
+{% endblock %}
+
+<!-- style="background-image: url('../../static/symposium/image1.jpg')" -->

@@ -1,0 +1,56 @@
+{% extends "network/layout2.html" %}
+{% load static %}
+
+{% block title %}
+Sign Up | Network
+{% endblock %}
+
+{% block script %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css" />
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+{% endblock %}
+
+{% block body %}
+
+<div class="p-3 animate__animated animate__fadeIn animate__zoomIn">
+    <center>
+        <img src="{% static 'network/Images/logo_icon.png' %}" height="45em" style="margin-bottom: 2vh;">
+        <h3>EDIT YOUR MODEL</h2><br>
+    </center>
+</div>
+<table class="table table-striped">
+    <thead>
+        <tr>
+            <th scope="col">ID</th>
+            <th scope="col">TITLE</th>
+            <th scope="col">POSTER</th>
+            <th scope="col">EDIT</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for entry in exhibition_entries %}
+        <tr class="animate__zoomIn animate__animated">
+            <th scope="row">{{ forloop.counter }}</th>
+            <td>{{entry.title}}</td>
+            <td><img src="{{entry.poster}}" alt="{{entry.title}}" height="100px" ></td>
+            <td><a href="{% url 'editModel' entry.id %}" class="btn btn-outline-info" style="border-radius: 8px;">Edit</a></td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+
+{% if messages %}
+{% for message in messages %}
+{% if message.tags == 'success' %}
+<script>
+    Swal.fire('{{ message }}', '', 'success').then(function () {
+        window.location.href = '/';
+    });
+</script>
+{% endif %}
+{% endfor %}
+{% endif %}
+
+
+{% endblock %}
